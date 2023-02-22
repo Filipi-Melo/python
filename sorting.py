@@ -12,9 +12,11 @@ def npsort(Array:list) -> list:
     return _array
 
 def sort(array:list) -> list:
-    '''`Criado por mim.`
+    '''`Seletion sort.`
 
-    `Cresce em progressão aritmética.` 
+    `Cresce em progressão aritmética.`
+    
+    `número de comparações = ((1+n)*n)/2`
     '''
     for x in range(len(array)-1,0,-1):
         for y in range(x):
