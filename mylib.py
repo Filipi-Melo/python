@@ -47,6 +47,11 @@ def enum(iterable:Iterable,length:int,start:int=0) -> Generator[tuple[int, Any],
     '`Can enumerate all iterable types.'
     yield from zip(range(start,length),iterable)
 
+class FilterMap:
+    '`Returns an iterator for filtering and mapping at the same time.'
+    def __new__(cls,Map:Callable,*iterables,Filter:Callable|None=None) -> Generator:
+        yield from filter(Filter,map(Map,*iterables))
+
 def Interrupt(function:Callable) -> Callable:
     '`Decorator to safely cancel functions using keyboard.'
     def wrapper(*args,**kwargs) -> Any:

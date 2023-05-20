@@ -1,6 +1,6 @@
 from typing import Any, Callable, Generator, Iterable
 
-NULL:object = ...
+NULL:object = object()
 
 class Register:
     '`Overloaded functions register class.'
@@ -14,18 +14,16 @@ class Register:
         scores:list[int] = [0] * len(sf.overloads)
         total:int = len(args) + len(kwargs)
         if not total:
-            for i,_,annotation in groups:
-                length:int = len(annotation)-1 if 'return' in annotation else len(annotation)
+            for i,length in ((i,len(ann)-1 if 'return' in ann else len(ann)) for i,_,ann in groups):
                 if not length: return sf.overloads[i]()
             return sf.overloads[0]()
-        
+
         for i,defaults,annotation in groups:
             length:int = len(annotation)-1 if 'return' in annotation else len(annotation)
             if length < total: continue
-            scores[i] += (
-                sum(1 for arg,paramtype in zip(args,annotation.values()) if instanceOf(arg,paramtype)) +
-                sum(1 for kwarg,paramtype in zip(kwargs.values(),(annotation.get(k,NULL) for k in kwargs))
-                if paramtype != NULL and instanceOf(kwarg,paramtype))
+            scores[i] = (
+                sum(map(instanceOf,args,annotation.values())) +
+                sum(map(lambda key,value:key in annotation and instanceOf(value,annotation[key]),kwargs,kwargs.values()))
             )
             if length - defaults <= scores[i] == total: return sf.overloads[i](*args,**kwargs)
         return sf.overloads[scores.index(max(scores))](*args,**kwargs)
@@ -37,11 +35,10 @@ class Register:
 
     def select(sf,index:int=NULL,param:Any=NULL,Return:Any=NULL) -> Callable:
         '`Selects the specified overloaded function.'
-        if index != NULL: return sf.overloads[index]
-        
+        if index != NULL: return sf.overloads[index]        
         for function,annotation in ((f,f.__annotations__) for f in sf.overloads):
-            if Return != NULL and annotation.get('return',NULL) == Return: return function
-            if param != NULL and param in annotation: return function
+            if Return != NULL and annotation.get('return',NULL) == Return or \
+                param != NULL and param in annotation: return function
 
 class Overload:
     '''`Decorator to easily overload functions and methods.`
@@ -60,6 +57,7 @@ def instanceOf(Object:Any,Class:Any) -> bool:
     except TypeError: return isinstance(Object,type(Class))
 
 def tester(expected:str,function:Callable,*args,**kwargs) -> None:
+    '`Tests the overloaded functions.'
     from colorama import Style, Fore, init
     init(autoreset=True)
     result:Any = function(*args,**kwargs)
@@ -88,7 +86,7 @@ def main():
     def _() -> str:
         return 'test 6'
     
-    tester('test 1',test,10,[],(),j=1,h=3,z=[],ඞ='ඞ')
+    tester('test 1',test,10,[],(),x=1,y=3,z=[],ඞ='ඞ')
     tester('test 3',test,40,(),[])
     tester('test 2',test,4,c=(),b=[])
     tester('test 4',test,2.0,[],None)
