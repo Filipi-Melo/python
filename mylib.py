@@ -1,33 +1,37 @@
-from typing import Any, Callable, Generator, Iterable
+from typing import Any, Callable, Generator, Iterable, overload as typehint, TypeVar, ParamSpec
 from collections import Counter
-from Overload import Overload
 from numpy import arange as xrange
 from math import sin, cos
+from overload import Overload
+from timeit import timeit
+from traceback import print_exception as printTraceback
+from itertools import chain
 
-def chain(*iterables,**kw) -> Generator[Any, None, None]:
-    '`Chain iterables until all iterables are exhausted.'
-    Iterables:Iterable = kw['iterables'] if 'iterables' in kw else iterables
-    for iterable in Iterables: yield from iterable
+T = TypeVar('T')
+P = ParamSpec('P')
 
-@Overload
-def Copy(array1:list, pos1:int, array2:list, pos2:int, length:int) -> None:
-    if length < 0: return
-    for i, VAL in enumerate(array1[pos1:length+pos1]): array2[i+pos2] = VAL
-
-@Overload
-def Copy(array1:tuple, pos1:int, array2:list, pos2:int, length:int) -> None: 
-    if length < 0: return
-    for i, VAL in enumerate(array1[pos1:length+pos1]): array2[i+pos2] = VAL
+def fillArray(array:list, value:Any, start:int=0, stop:int|None=None) -> None:
+    '`fills an list'
+    if stop == None: stop = len(array)
+    array[start:stop] = map(lambda _:value,range(start, stop))
 
 @Overload
-def Copy(iterable:Iterable, pos1:int, array:list, pos2:int, length:int) -> None: 
-    if length < 0: return
-    for i,VAL in filter(lambda t:t[0]>=pos1, enum(iterable, length)): array[i+pos2] = VAL
+def ArrayCopy(array1:list, pos1:int, array2:list, pos2:int, length:int) -> None:
+    '`Copy the values of an list to another list.'
+    if length < 1: return
+    array2[pos2:length + pos2] = array1[pos1:length + pos1]
 
 @Overload
-def Copy(iterable:Iterable, array:list, pos:int, length:int) -> None:
-    if length < 0: return
-    for i,VAL in enum(iterable, length): array[i+pos] = VAL
+def ArrayCopy(array1:tuple, pos1:int, array2:list, pos2:int, length:int) -> None: 
+    '`Copy the values of an tuple to the list.'
+    if length < 1: return
+    array2[pos2:length + pos2] = array1[pos1:length + pos1]
+
+@Overload
+def ArrayCopy(iterable:Iterable, array:list, pos:int, length:int) -> None:
+    '`Copy the values of an iterable to the list.'
+    if length < 1: return
+    array[pos:length + pos] = iterable
 
 @Overload
 def drange(start:float, stop:float, step:float) -> Generator[float, None, None]: 
@@ -41,29 +45,55 @@ def drange(start:int, stop:int, step:float) -> Generator[int, None, None]:
     if 1 >= abs(step) >= 0: return
     while start > stop:
         yield start
-        start = int(start//step)
+        start = int(start // step)
 
-def enum(iterable:Iterable,length:int,start:int=0) -> Generator[tuple[int, Any], None, None]:
-    '`Can enumerate all iterable types.'
+def enum(iterable:Iterable[T], length:int, start:int=0) -> Generator[tuple[int, T], None, None]:
+    '`Returns an enumeration generator for all iterable types.'
     yield from zip(range(start,length),iterable)
 
 class FilterMap:
     '`Returns an iterator for filtering and mapping at the same time.'
-    def __new__(cls,Map:Callable,*iterables,Filter:Callable|None=None) -> Generator:
-        yield from filter(Filter,map(Map,*iterables))
+    def __new__(cls, Map:Callable, *iterables:Iterable[T], Filter:Callable|None=None) -> Generator[T,None,None]:
+        yield from filter(Filter, map(Map, *iterables))
 
-def Interrupt(function:Callable) -> Callable:
+class Flat:
+    '`Class to flatten any iterable.'
+    def __new__(cls, iterable:Iterable[T]) -> Generator[T,None,None]:
+        if instanceOf(iterable, str): 
+            yield from iterable
+            return
+        
+        for value in iterable:
+            if instanceOf(value, Iterable): yield from Flat(value) 
+            else: yield value
+
+def instanceOf(Object:Any,Class:type|tuple[type]) -> bool:
+    '`Returns whether an object is an instance of a class without raising an TypeError.'
+    try: return isinstance(Object,Class)
+    except TypeError: return isinstance(Object,type(Class))
+
+def SafeInterrupt(function:Callable[P,T]) -> Callable[P,T]:
     '`Decorator to safely cancel functions using keyboard.'
-    def wrapper(*args,**kwargs) -> Any:
+    def wrapper(*args:P.args,**kwargs:P.kwargs) -> T:
         try: return function(*args,**kwargs)
         except KeyboardInterrupt: pass
     return wrapper
+
+@typehint
+def mrange(start:int, stop:int, step:int) -> Generator[int, None, None]:...
+@typehint
+def mrange(start:float, stop:float, step:float) -> Generator[float, None, None]:...
 
 def mrange(start:int|float, stop:int|float, step:int|float) -> Generator[int|float, None, None]:
     if not step: return
     while start < stop:
         yield start
         start *= step
+
+@typehint
+def powrange(start:int, stop:int, step:int) -> Generator[int, None, None]:...
+@typehint
+def powrange(start:float, stop:float, step:float) -> Generator[float, None, None]:...
 
 def powrange(start:int|float, stop:int|float, step:int|float) -> Generator[int|float, None, None]:
     while start < stop:
@@ -72,3 +102,13 @@ def powrange(start:int|float, stop:int|float, step:int|float) -> Generator[int|f
 
 def sincos(num:float) -> tuple[float, float]: 
     return sin(num), cos(num)
+
+def timer(function:Callable) -> float:
+    '`Calls the timeit once.'
+    return timeit(function, number=1)
+
+def zipdicts(*dicts:dict,fill:Any=None):
+    '`Zips keys and dicts values.'
+    if not dicts: return
+    for key in chain(dicts): 
+        yield key, *(Dict.get(key, fill) for Dict in dicts)
