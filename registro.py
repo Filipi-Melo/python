@@ -1,14 +1,17 @@
-def registrar():
+def main():
     registro, resposta = [], ''
-    while resposta != 'não':
-        resposta = input("Deseja se registar?\nDigite 'sim' ou 'não': ")
-        if resposta =='sim':
-            text = ["\nDigite o seu nome: ","Digite o seu sobrenome: ","Digite sua senha:"]
-            for i in range(3): registro.append(input(text[i]))
+    textos = ["\nDigite o seu nome: ","Digite o seu sobrenome: ","Digite sua senha: "]
     
-    print('\nUsuários registrados:')
-    for i in range(0,len(registro),3):
+    while resposta != 'não':
+        resposta = input("Deseja se registrar?\nDigite 'sim' ou 'não':")
+        if resposta =='sim':
+            registro.append([input(t) for t in textos])
+            print()
+    
+    print('\n\nUsuários registrados:')
+    
+    for usuario in registro:
         print("--------------------------")
-        for x in range(3): print(["Nome: ","Sobrenome: ","Senha: "][x] + registro[i+x])
+        print('\n'.join(t + v for t,v in zip(["Nome: ","Sobrenome: ","Senha: "],usuario)))
 
-if __name__ == '__main__': registrar()
+if __name__ == '__main__': main()
