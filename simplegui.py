@@ -25,7 +25,7 @@ window=sg.Window("titulo",layout)
 def loop():
     event = True
     while event and event!="Cancelar":
-        event,value=window.read()
+        event,value = window.read()
         if event == "guardar":
             window["text"].update("Valor Digitado: "+value["inp1"])
             window["t1"].update("█")
