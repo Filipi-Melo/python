@@ -9,8 +9,8 @@ import numpy as np
 def Bubble(array:list) -> list:
     LEN:int = len(array)
     for x in range(LEN):
-        for y in range(x, LEN):
-            if array[y] < array[x]: array[x], array[y] = array[y], array[x]
+        for y in range(LEN - x - 1):
+            if array[y] > array[y + 1]: array[y], array[y + 1] = array[y + 1], array[y]
     return array
 
 def CocktailShaker(array:list) -> list:
@@ -18,12 +18,12 @@ def CocktailShaker(array:list) -> list:
     Sorted:bool = False
     while not Sorted:
         Sorted = True
-        for x in reversed(range(1, END+1)):
-            if array[x-1] > array[x]: array[x], array[x-1], Sorted = array[x-1], array[x], False
+        for x in reversed(range(1, END + 1)):
+            if array[x - 1] > array[x]: array[x], array[x - 1], Sorted = array[x - 1], array[x], False
         if Sorted: break
         Sorted = True
         for y in range(END):
-            if array[y] > array[y+1]: array[y], array[y+1], Sorted = array[y+1], array[y], False
+            if array[y] > array[y + 1]: array[y], array[y + 1], Sorted = array[y + 1], array[y], False
     return array
 
 def Comb(array:list) -> list:
@@ -82,6 +82,24 @@ def HeapInsertion(array:list) -> list:
         array.insert(i, array.pop(left))
     return array
 
+def HybridComb(array:list) -> list:
+    CONST:float = 1 / 1.247330950103979
+    length:int = len(array)
+    gap:int = length
+    swapped:bool = True
+
+    while True:
+        if gap > 2: gap = int(gap * CONST)
+        swapped = False
+        for i in range(length - gap):
+            if array[i] > array[i + gap]:
+                array[i], array[i + gap], swapped = array[i + gap], array[i], True
+
+        if not swapped or gap < 3:
+            Insertion(array)
+            break
+    return array
+
 def Insertion(array:list) -> list:
     for x, VAL in enumerate(array, -1):
         while x >= 0 and VAL < array[x]: 
@@ -137,11 +155,12 @@ def RadixSort(array:list) -> list:
     #     return int(log10(abs(num)) if num else 0) + 1
     # MAX = NumberOfDigits(max(array)) # Slow
     MAX:int = len(str(max(array)))
-    Len = len(array)
+    length:int = len(array)
+    
     for i in range(MAX):
         buckets:list[list] = [[] for _ in range(10)]
         for val in array: buckets[Digit(val, i)].append(val)        
-        array[:Len] = chain.from_iterable(buckets)
+        array[:length] = chain.from_iterable(buckets)
     return array
 
 def Seletion(array:list) -> list:
@@ -181,7 +200,7 @@ def SiftDown(array:list, start:int, end:int) -> None:
     
         array[start], array[toSwap], start = array[toSwap], array[start], toSwap
 
-ALL:dict[str,Callable] = {
+ALL:dict[str, Callable] = {
     'Bubble': Bubble,
     'Cocktail Shaker': CocktailShaker,
     'Comb': Comb,
@@ -189,6 +208,7 @@ ALL:dict[str,Callable] = {
     'Grail': lambda arr: GrailSortInPlace(arr,0,len(arr)),
     'Heap': Heap,
     'Heap Insertion': HeapInsertion,
+    'Hybrid Comb': HybridComb,
     'Holy Grail': HolyGrail,
     'Holy Shell': HolyShell,
     'Insertion': Insertion,
@@ -217,27 +237,22 @@ def loop(array:list, repeat:int, delay:float) -> None:
     for step in range(repeat):
         print('Shuffling...')
         shuffle(array)
-        print(f'Starting >>>>> Step:{step + 1}\n')
+        print(f'Starting >> Step: {step + 1}\n')
 
         results:dict[float,str] = { time(ALL[key], array.copy(), key):key for key in ALL }
         times:list = Shell([*results])[::-1]
         SCORES[results[times[-1]].replace('  ','')] += 1
 
-        print(
-            f"\n{'Results':=^50}\n", 
-            '\n'.join(f"{(results[sec]+' sort:'):<30} {sec:.6f} s" for sec in times),'\n',
-            sep=''
-        )
+        print(f"\n{'Results':=^50}")
+        print('\n'.join(f"{(results[sec]+' sort:'):<30} {sec:.7f} s" for sec in times),'\n')
         sleep(delay)
 
 def main(length:float, repeat:int=1, delay:float=0.1) -> None:
     array:list = [*range(int(length))]
-
-    print(f"{f'List size: {int(length)}':_^50}")
+    
+    print(f"List size: {int(length)}".center(50,'_'))    
     loop(array, repeat, delay)
-    print(f"{'Fastest':_^50}\n",
-        '\n'.join(f"{(KEY+' sort:'):<31}{SCORES[KEY]}" for KEY in ALL),
-        sep=''
-    )
+    print(f"{'Fastest':_^50}")
+    print('\n'.join(f"{(KEY + ' sort:'):<31}{SCORES[KEY]}" for KEY in ALL))
 
 if __name__ == '__main__': main(8192)

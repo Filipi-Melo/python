@@ -4,20 +4,32 @@
 
 `Inspired in singledispatch.'''
 from typing import Any, Callable, Generator, Generic, Iterable, ParamSpec, TypeVar
+from sys import _getframe
 
 NULL:object = object()
 T = TypeVar('T')
 T2 = TypeVar('T2')
-C = TypeVar('C')
 P = ParamSpec('P')
 P2 = ParamSpec('P2')
 
+def modulename() -> str:
+    '`Returns the name of the module where the function was defined.'
+    prev:str = None
+    for i in range(1000):
+        try:
+            module:str = _getframe(i).f_globals.get('__name__')
+            if module == 'importlib._bootstrap': break
+            prev = module
+        except ValueError: return '__main__'
+    return prev
+
 def getname(obj:Any) -> str:
     '`Returns the function or method name.'
-    return str(obj).split()[1]
+    return f'{modulename()}.{str(obj).split()[1]}'
 
 class Register(Generic[P,T]):
     '`Overloaded functions register class.'
+    __slots__:tuple = 'overloads', 'name'
     def __init__(sf, function:Callable[P,T], name:str) -> None:
         sf.overloads:list[Callable[P,T]] = [function]
         sf.name:str = name
@@ -26,23 +38,26 @@ class Register(Generic[P,T]):
         '`Looks up the function that matches the arguments.'
         total:int = len(args) + len(kwargs)
         if not total: return sf.overloads[-1]()
-
-        groups:Generator = ((i, len(f.__defaults__ or []), f.__annotations__) for i,f in enumerate(sf.overloads))
         index:int = 0
         maxscore:int = 0
 
-        for i, defaults, annotation in groups:
+        for i, defaults, annotation in sf.groups:
             length:int = len(annotation) - 1 if 'return' in annotation else len(annotation)            
             if length < total: continue
             score:int = (
                 sum(map(instanceOf,args,annotation.values())) +
-                sum(map(lambda key,value:key in annotation and instanceOf(value,annotation[key]), 
+                sum(map(lambda key,value:key in annotation and instanceOf(value, annotation[key]), 
                         kwargs, kwargs.values()))
             )
-            if score > maxscore: index, maxscore = i, score
-            if length - defaults <= score == total: break
-
+            if score > maxscore: 
+                index, maxscore = i, score
+                if length - defaults <= score == total: break
         return sf.overloads[index](*args,**kwargs)
+    
+    @property
+    def groups(sf) -> Generator[tuple[int, int, dict[str, type]], None, None]:
+        return ((i, len(function.__defaults__ or []), function.__annotations__) 
+                for i, function in enumerate(sf.overloads))    
     
     def register(sf, function:Callable[P2,T2]) -> Callable[P2,T2]:
         '`Registers the function and returns self or the function.'
@@ -52,8 +67,8 @@ class Register(Generic[P,T]):
     def select(sf, index:int=NULL, param:Any=NULL, Return:Any=NULL) -> Callable[P,T]:
         '`Selects the specified overloaded function or method.'
         if index != NULL: return sf.overloads[index]
+        pairs:list = [(func,func.__annotations__) for func in sf.overloads]        
 
-        pairs:list = [(f,f.__annotations__) for f in sf.overloads]        
         if Return != NULL:
             for function, annotation in pairs:
                 if annotation.get('return',NULL) == Return: return function
@@ -61,21 +76,21 @@ class Register(Generic[P,T]):
         if param != NULL:
             for function, annotation in pairs:
                 if param in annotation: return function
-
-    def get(sf, instance:Any, objtype:Any=None) -> Callable[P,T]:
+    
+    def __get__(sf, instance:Any, owner:Any=None) -> Callable[P,T]:
         '`Looks for the method that matches the arguments.'
-        objt:tuple = (instance,) if instance != None else ()
-        return lambda *args,**kwargs: sf(*objt + args, **kwargs)
-
-setattr(Register, '__get__', Register.get)
+        obj:tuple = (instance,) if instance != None else ()
+        return lambda *args,**kwargs: sf(*obj + args, **kwargs)
+    
+    _get_ = __get__
 
 class Overload:
     '`Decorator to easily overload functions and methods.'
     registers:dict[str, Register] = {}
-    
+
     def __new__(cls,function:Callable[P,T]) -> Register[P,T]:
         if instanceOf(function,(property, staticmethod, classmethod)): raise TypeError(
-            'Property, StaticMethod and ClassMethod cannot be overloaded.\n\t   '
+            'Property, StaticMethod and ClassMethod cannot be overloaded. '
             'Use Overload only in functions and methods.'
         )
         name:str = getname(function)
@@ -86,9 +101,12 @@ class Overload:
 def instanceOf(Object:Any, Class:type|tuple) -> bool:
     '`Returns whether an object is an instance of a class without raising an TypeError.'
     try: return isinstance(Object, Class)
-    except TypeError: return isinstance(Object,type(Class))
+    except TypeError: return isinstance(Object, type(Class))
 
 def main() -> None:
+    from colorama import Style, Fore, init
+    init(autoreset=True)
+    
     @Overload
     def test(*args:Any,**kwargs:Any) -> str:
         return 'test 1'
@@ -110,12 +128,9 @@ def main() -> None:
     
     def tester(expected:str, function:Callable, *args, **kwargs) -> None:
         '`Tests the overloaded functions.'
-        from colorama import Style, Fore, init
-        init(autoreset=True)    
         result:Any = function(*args, **kwargs)
-
         print(Style.BRIGHT + (f'{Fore.GREEN}The result match the expected:' if result == expected else
-                            f'{Fore.RED}The result does not match the expected:'),
+                              f'{Fore.RED}The result does not match the expected:'),
             f'\n{Style.BRIGHT}{result = }; {expected = }\n'
         )
 

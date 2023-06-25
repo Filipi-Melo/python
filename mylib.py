@@ -1,5 +1,4 @@
-from typing import Any, Callable, Generator, Iterable, overload as typehint, TypeVar, ParamSpec
-from collections import Counter
+from typing import Any, Callable, Counter, Generator, Iterable, TypeVar, ParamSpec
 from numpy import arange as xrange
 from math import sin, cos
 from overload import Overload
@@ -9,11 +8,6 @@ from itertools import chain
 
 T = TypeVar('T')
 P = ParamSpec('P')
-
-def fillArray(array:list, value:Any, start:int=0, stop:int|None=None) -> None:
-    '`fills an list'
-    if stop == None: stop = len(array)
-    array[start:stop] = map(lambda _:value,range(start, stop))
 
 @Overload
 def ArrayCopy(array1:list, pos1:int, array2:list, pos2:int, length:int) -> None:
@@ -51,6 +45,11 @@ def enum(iterable:Iterable[T], length:int, start:int=0) -> Generator[tuple[int, 
     '`Returns an enumeration generator for all iterable types.'
     yield from zip(range(start,length),iterable)
 
+def fillArray(array:list, value:Any, start:int=0, stop:int|None=None) -> None:
+    '`fills an list.'
+    if stop == None: stop = len(array)
+    array[start:stop] = (value for _ in range(start, stop))
+
 class FilterMap:
     '`Returns an iterator for filtering and mapping at the same time.'
     def __new__(cls, Map:Callable, *iterables:Iterable[T], Filter:Callable|None=None) -> Generator[T,None,None]:
@@ -79,21 +78,11 @@ def SafeInterrupt(function:Callable[P,T]) -> Callable[P,T]:
         except KeyboardInterrupt: pass
     return wrapper
 
-@typehint
-def mrange(start:int, stop:int, step:int) -> Generator[int, None, None]:...
-@typehint
-def mrange(start:float, stop:float, step:float) -> Generator[float, None, None]:...
-
 def mrange(start:int|float, stop:int|float, step:int|float) -> Generator[int|float, None, None]:
     if not step: return
     while start < stop:
         yield start
         start *= step
-
-@typehint
-def powrange(start:int, stop:int, step:int) -> Generator[int, None, None]:...
-@typehint
-def powrange(start:float, stop:float, step:float) -> Generator[float, None, None]:...
 
 def powrange(start:int|float, stop:int|float, step:int|float) -> Generator[int|float, None, None]:
     while start < stop:
