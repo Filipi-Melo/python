@@ -1,10 +1,4 @@
-from typing import Any, Callable, Counter, Generator, Iterable, TypeVar, ParamSpec
-from numpy import arange as xrange
-from math import sin, cos
-from overload import Overload
-from timeit import timeit
-from traceback import print_exception as printTraceback
-from itertools import chain
+from _mylib import *
 
 T = TypeVar('T')
 P = ParamSpec('P')
